@@ -402,3 +402,149 @@ test.describe.serial('Interact with Homepage', () => {
       await page.goBack();
   })
 })
+
+
+// ----------- tests for login/logout feature -----------
+test.describe.serial('Login and Logout User', () => {
+  // test to create account and get captcha message (since i cant verify captcha)
+  test('can create a new account and check for captcha presence', async () => {
+      await page.waitForTimeout(4000);
+      let url = 'https://news.ycombinator.com/login';
+      // navigate to login page
+      await loadPageWithRetries(page, url);
+
+      // find the 'create account' form
+      const forms = page.locator('form');
+      const signupForm = forms.nth(1); // which is the SECOND form on the page
+
+      // selectors based on that specific form
+      const usernameSelector = signupForm.locator('input[name="acct"]');
+      const passwordSelector = signupForm.locator('input[name="pw"]');
+      const submitButtonSelector = signupForm.locator('input[type="submit"][value="create account"]');
+
+      // wait for the username input to be visible and then fill
+      await usernameSelector.waitFor({ state: 'visible' });
+      const username = 'qawolftester222';
+      const password = 'qawolfwoofwoof';
+      await usernameSelector.fill(username);
+
+      // wait for the password input to be visible and then fill
+      await passwordSelector.waitFor({ state: 'visible' });
+      await passwordSelector.fill(password);
+
+      // wait for the submit button to be visible
+      await submitButtonSelector.waitFor({ state: 'visible' });
+
+      // add a slight delay before clicking the submit button or else error
+      await page.waitForTimeout(2000);
+
+      // click the submit button and wait for navigation
+      await Promise.all([
+          submitButtonSelector.click(),
+          page.waitForNavigation()
+      ]);
+      await page.waitForTimeout(2000);
+
+      // wait for captcha
+      await page.waitForSelector('.g-recaptcha', { state: 'visible', timeout: 20000 });
+      // make sure captcha is present
+      const captchaFrame = page.locator('.g-recaptcha');
+      await expect(captchaFrame).toBeVisible();
+  });
+
+  // test to log in with an existing account
+  // this test can fail if attempted too much, hackernews requires captcha after frequent login attempts on local device
+  test('can log in with existing account and logout', async () => {
+      await page.waitForTimeout(4000);
+      const url = 'https://news.ycombinator.com/login';
+      await loadPageWithRetries(page, url);
+
+      // valid login credentials from last test
+      const username = 'wolftester123';
+      const password = 'password1';
+
+      await page.waitForSelector('input[name="acct"]', { state: 'visible' });
+      await page.fill('input[name="acct"]', username);
+
+      await page.waitForSelector('input[name="pw"]', { state: 'visible' });
+      await page.fill('input[name="pw"]', password);
+
+      await page.waitForSelector('input[type="submit"][value="login"]', { state: 'visible' });
+      await Promise.all([
+          // click the login button
+          page.click('input[type="submit"][value="login"]'),
+          page.waitForNavigation()
+      ]);
+
+      // verify that the login was successful
+      await expect(page).toHaveURL('https://news.ycombinator.com');
+
+      // now logout
+      await page.waitForSelector("#logout", { timeout: 20000 });
+      const logoutLink = page.locator('#logout');
+      await expect(logoutLink).toBeVisible();
+      await page.waitForTimeout(2000);
+      await logoutLink.click();
+
+      // to ensure logout worked, make sure login button is available again
+      await page.waitForSelector('td[style*="text-align:right"] span.pagetop > a');
+      const loginLink = page.locator('td[style*="text-align:right"] span.pagetop > a');
+      await expect(loginLink).toBeVisible();
+
+      await clearData(page);
+  });
+
+
+  // test not being able to login with bad account
+  // this test can also fail if attempted too much, hackernews requires captcha after frequent login attempts
+  test('cannot log in with invalid credentials', async () => {
+      await page.waitForTimeout(4000);
+      const url = 'https://news.ycombinator.com/login';
+      await loadPageWithRetries(page, url);
+
+      // valid login credentials from last test
+      const username = 'invaliduser';
+      const password = 'invalidpwd';
+
+      await page.waitForSelector('input[name="acct"]', { state: 'visible' });
+      await page.fill('input[name="acct"]', username);
+
+      await page.waitForSelector('input[name="pw"]', { state: 'visible' });
+      await page.fill('input[name="pw"]', password);
+
+      await page.waitForSelector('input[type="submit"][value="login"]', { state: 'visible' });
+      await page.waitForTimeout(2000);
+      await Promise.all([
+          page.click('input[type="submit"][value="login"]'),
+          page.waitForNavigation()
+      ]);
+
+      // should be on same page
+      await expect(page).toHaveURL('https://news.ycombinator.com/login');
+
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('text=Bad login.', { state: 'visible' });
+      // should have error message
+      const badLoginMessage = page.locator('text=Bad login.');
+      await expect(badLoginMessage).toBeVisible();
+
+      await clearData(page);
+  });
+})
+
+
+// ------------- retry helper function -------------
+// when console logging page.content(), i noticed sometimes i get an error and my data wont load
+// so i use a retry helper function which tries again (up to 5 times) and this works
+async function loadPageWithRetries(page, url) {
+  for (let i = 0; i < 4; i++) {
+      await page.goto(url, { waitUntil: 'networkidle' });
+      const content = await page.content();
+      if (!content.includes("Sorry, we're not able to serve your requests this quickly.")) {
+          return;
+      }
+      console.log(`Attempt ${i + 1} failed. Retrying in 5 seconds...`);
+      await page.waitForTimeout(5000);
+  }
+  throw new Error('Failed to load the page after multiple attempts due to rate limiting.');
+}
