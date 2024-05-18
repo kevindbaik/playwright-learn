@@ -175,3 +175,230 @@ test.describe.serial('View Homepage', () => {
     // });
 
 });
+
+
+// -----------  tests for interacting with homepage -----------
+test.describe.serial('Interact with Homepage', () => {
+  // check clicking article directs user to the original url
+  test('article titles are clickable and valid', async () => {
+      // while testing for clicking buttons, i noticed having a small timeout made testing more consistent
+      // without a short pause, website would often throw error for going too fast
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      // for the purpose of this assignment i only tested clicking the first 3 articles
+      for (let i = 0; i < 2; i++) {
+          const articleTitle = articles.nth(i).locator('.title .titleline > a:first-of-type');
+          await expect(articleTitle).toBeVisible();
+
+          // thankfully, most of these elements href had url or query to make it very simple to test
+          const expectedUrl = await articleTitle.getAttribute('href');
+
+          await Promise.all([
+              articleTitle.click(),
+              page.waitForNavigation()
+          ]);
+
+          const newUrl = page.url();
+          expect(newUrl).toBe(expectedUrl);
+          await page.goBack();
+      }
+  });
+
+  // check clicking comments directs user to article post
+  test('article comments are clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+          const subline = sibling.locator('.subline');
+          const commentElement = subline.locator('a').last();
+
+          const queryString = await commentElement.getAttribute('href');
+
+          await Promise.all([
+              commentElement.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking author directs user to author profile page
+  test('article author is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+          const subline = sibling.locator('.subline');
+          const authorElement = subline.locator('.hnuser');
+
+          const queryString = await authorElement.getAttribute('href');
+
+          await Promise.all([
+              authorElement.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking age directs user to article post
+  test('article age is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+          const subtext = sibling.locator('.subtext');
+          const ageElement = subtext.locator('span.age > a');
+
+          const queryString = await ageElement.getAttribute('href');
+
+          await Promise.all([
+              ageElement.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking source directs user to all other posts with same source
+  test('article source site is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const titleCell = articles.nth(i).locator('.title');
+          const sourceLink = titleCell.locator('.sitebit.comhead > a');
+
+          const queryString = await sourceLink.getAttribute('href');
+
+          await Promise.all([
+              sourceLink.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking upvote arrow directs user to post
+  test('article upvote arrow is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const arrowCell = articles.nth(i).locator('.votelinks');
+          const arrowLink = arrowCell.locator('center > a');
+
+          const queryString = await arrowLink.getAttribute('href');
+
+          await Promise.all([
+              arrowLink.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking hide button works as intended
+  test('article hide button is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+      const articles = page.locator('.athing')
+
+      for (let i = 0; i < 2; i++) {
+          const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+          const subtext = sibling.locator('.subtext');
+          const hideLink = subtext.locator('a:has-text("hide")');
+
+          const queryString = await hideLink.getAttribute('href');
+
+          await Promise.all([
+              hideLink.click(),
+              page.waitForNavigation()
+          ]);
+
+          await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+          await page.goBack();
+      }
+  });
+
+  // check clicking logo directs user to home
+  test('article logo is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      await page.waitForSelector('.athing', { timeout: 20000 });
+
+      const logoLink = page.locator('img[src="y18.svg"]').locator('..');
+      await expect(logoLink).toBeVisible();
+
+      const url = await logoLink.getAttribute('href');
+
+      await Promise.all([
+          logoLink.click(),
+          page.waitForNavigation()
+      ]);
+
+      await expect(page).toHaveURL(url);
+      await page.goBack();
+  });
+
+  // check clicking the more button directs user to next page
+  test('more (next page) button is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      const url = 'https://news.ycombinator.com';
+      await loadPageWithRetries(page, url);
+
+      await page.waitForSelector('a.morelink');
+      const moreLink = page.locator('a.morelink');
+      const queryString = await moreLink.getAttribute('href');
+
+      await Promise.all([
+          moreLink.click(),
+          page.waitForNavigation()
+      ]);
+
+      await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+      await page.goBack();
+  })
+
+  // check clicking login button directs user to login page
+  test('login button is clickable and valid', async () => {
+      await page.waitForTimeout(4000);
+      const url = 'https://news.ycombinator.com';
+      await loadPageWithRetries(page, url);
+
+      await page.waitForSelector('td[style*="text-align:right"] span.pagetop > a');
+      const loginLink = page.locator('td[style*="text-align:right"] span.pagetop > a');
+
+      const queryString = await loginLink.getAttribute('href');
+
+      await page.waitForTimeout(4000);
+      await Promise.all([
+          loginLink.click(),
+          page.waitForNavigation()
+      ]);
+
+      await expect(page).toHaveURL(`https://news.ycombinator.com/${queryString}`);
+      await page.waitForTimeout(4000);
+      await page.goBack();
+  })
+})
