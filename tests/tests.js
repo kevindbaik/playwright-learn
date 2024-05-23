@@ -577,6 +577,76 @@ test('each article has points in correct format', async () => {
     }
     });
 
+
+test.describe.serial('Non-visual tests for Homepage', () => {
+    // check that the homepage loads with a status code of 200
+    test('homepage loads successfully', async () => {
+        const response = await page.goto('https://news.ycombinator.com/');
+        expect(response.status()).toBe(200);
+    });
+
+    // check presence of essential meta tags
+    test('has essential meta tags', async () => {
+        const metaDescription = page.locator('meta[name="description"]');
+        await expect(metaDescription).toHaveAttribute('content', /Hacker News/);
+
+        const metaViewport = page.locator('meta[name="viewport"]');
+        await expect(metaViewport).toHaveAttribute('content', 'width=device-width, initial-scale=1');
+    });
+
+    // check that no JavaScript errors are thrown
+    test('no JavaScript errors', async ({ browser }) => {
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        const errors = [];
+
+        page.on('pageerror', error => {
+            errors.push(error);
+        });
+
+        await page.goto('https://news.ycombinator.com/');
+        expect(errors.length).toBe(0);
+    });
+
+    // check that external resources like stylesheets are loaded
+    test('external resources load correctly', async () => {
+        const styleSheets = page.locator('link[rel="stylesheet"]');
+        await expect(styleSheets).toHaveCount(1);
+
+        const scripts = page.locator('script');
+        await expect(scripts).toHaveCountGreaterThan(0);
+
+        const resourceUrls = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('link[rel="stylesheet"], script')).map(el => el.src || el.href);
+        });
+
+        for (const url of resourceUrls) {
+            const response = await page.goto(url);
+            expect(response.status()).toBe(200);
+        }
+    });
+
+    // check that the page sets the correct cookies
+    test('sets correct cookies', async () => {
+        await page.goto('https://news.ycombinator.com/');
+        const cookies = await page.context().cookies();
+
+        const hasHnCookie = cookies.some(cookie => cookie.name === 'user' && cookie.domain.includes('ycombinator.com'));
+        expect(hasHnCookie).toBe(true);
+    });
+
+    // check the performance timing of the page load
+    test('performance timing is within acceptable limits', async () => {
+        await page.goto('https://news.ycombinator.com/');
+        const performanceTiming = await page.evaluate(() => JSON.stringify(window.performance.timing));
+        const timing = JSON.parse(performanceTiming);
+
+        const pageLoadTime = timing.loadEventEnd - timing.navigationStart;
+        console.log(`Page load time: ${pageLoadTime} ms`);
+        expect(pageLoadTime).toBeLessThan(3000);  // example threshold
+    });
+});
+
 // ------------- retry helper function -------------
 // when console logging page.content(), i noticed sometimes i get an error and my data wont load
 // so i use a retry helper function which tries again (up to 5 times) and this works
