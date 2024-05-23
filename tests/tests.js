@@ -533,6 +533,50 @@ test.describe.serial('Login and Logout User', () => {
 })
 
 
+// writing random additional tests for practice
+
+// check HTML structure consistency
+test('HTML structure is consistent', async () => {
+    const bodyElement = page.locator('body');
+    const bodyInnerHtml = await bodyElement.innerHTML();
+    const expectedStructure = /<html>.*<head>.*<\/head>.*<body>.*<table.*>.*<\/table>.*<\/body>.*<\/html>/s;
+
+    expect(bodyInnerHtml).toMatch(expectedStructure);
+});
+
+// check if each article has a comment link with the correct format
+test('each article has a comment link with correct format', async () => {
+await page.waitForSelector('.athing', { timeout: 20000 });
+const articles = page.locator('.athing');
+
+for (let i = 0; i < 30; i++) {
+    const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+    const subtext = sibling.locator('.subtext');
+    const commentLink = subtext.locator('a').nth(3);
+
+    await expect(commentLink).toBeVisible();
+    const commentText = await commentLink.textContent();
+    expect(commentText).toMatch(/^\d+ comments?$/);
+}
+});
+
+// check consistency of points formatting
+test('each article has points in correct format', async () => {
+    await page.waitForSelector('.athing', { timeout: 20000 });
+    const articles = page.locator('.athing');
+
+    for (let i = 0; i < 30; i++) {
+        const sibling = articles.nth(i).locator('xpath=following-sibling::tr[1]');
+        const subtext = sibling.locator('.subtext');
+        const pointsElement = subtext.locator('.score');
+
+        await expect(pointsElement).toBeVisible();
+        const pointsText = await pointsElement.textContent();
+        expect(pointsText).not.toBeNull();
+        expect(pointsText.trim()).toMatch(/^\d+ points?$/);
+    }
+    });
+
 // ------------- retry helper function -------------
 // when console logging page.content(), i noticed sometimes i get an error and my data wont load
 // so i use a retry helper function which tries again (up to 5 times) and this works
